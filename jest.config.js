@@ -30,6 +30,15 @@ export default {
       {
         useESM: true,
         tsconfig: 'tsconfig.test.json',
+        // ts-jest compiles each test file in isolation and resolves the
+        // effective `module` per-file, which makes it spuriously flag top-level
+        // `await` (TS1378) in some ESM test modules even though tsconfig.test.json
+        // sets `module: ESNext`. The await is genuinely valid here — the tests
+        // run as ES modules under NODE_OPTIONS=--experimental-vm-modules — so we
+        // suppress only this false-positive diagnostic.
+        diagnostics: {
+          ignoreCodes: [1378],
+        },
       },
     ],
   },
