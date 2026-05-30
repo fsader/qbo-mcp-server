@@ -49,6 +49,32 @@ describe('Report Handlers', () => {
       expect(result.isError).toBe(false);
     });
 
+    it('should map as_of_date to the QBO end_date param and never forward start_date', async () => {
+      let captured: any;
+      mockQuickBooksInstance.reportBalanceSheet.mockImplementation((params: any, cb: any) => {
+        captured = params;
+        cb(null, { Header: {} });
+      });
+
+      await getQuickbooksBalanceSheet({ as_of_date: '2026-05-30', start_date: '2026-01-01' });
+
+      expect(captured.end_date).toBe('2026-05-30');
+      expect(captured).not.toHaveProperty('start_date');
+      expect(captured).not.toHaveProperty('as_of_date');
+    });
+
+    it('should prefer as_of_date over end_date when both are supplied', async () => {
+      let captured: any;
+      mockQuickBooksInstance.reportBalanceSheet.mockImplementation((params: any, cb: any) => {
+        captured = params;
+        cb(null, { Header: {} });
+      });
+
+      await getQuickbooksBalanceSheet({ as_of_date: '2026-05-30', end_date: '2024-12-31' });
+
+      expect(captured.end_date).toBe('2026-05-30');
+    });
+
     it('should handle errors', async () => {
       mockQuickBooksInstance.reportBalanceSheet.mockImplementation((params: any, cb: any) =>
         cb(new Error('Report failed'), null)
@@ -175,6 +201,19 @@ describe('Report Handlers', () => {
       const result = await getQuickbooksTrialBalance({ accounting_method: 'Cash' });
 
       expect(result.isError).toBe(false);
+    });
+
+    it('should forward both start_date and end_date so the period is explicit', async () => {
+      let captured: any;
+      mockQuickBooksInstance.reportTrialBalance.mockImplementation((params: any, cb: any) => {
+        captured = params;
+        cb(null, { Header: {} });
+      });
+
+      await getQuickbooksTrialBalance({ start_date: '2025-08-27', end_date: '2026-05-30' });
+
+      expect(captured.start_date).toBe('2025-08-27');
+      expect(captured.end_date).toBe('2026-05-30');
     });
 
     it('should handle all options', async () => {

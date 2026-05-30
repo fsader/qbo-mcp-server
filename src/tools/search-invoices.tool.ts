@@ -1,9 +1,11 @@
 import { searchQuickbooksInvoices } from "../handlers/search-quickbooks-invoices.handler.js";
+import { resolveSearchCriteria } from "../helpers/resolve-search-criteria.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
 const toolName = "search_invoices";
-const toolDescription = "Search invoices in QuickBooks Online using criteria (maps to node-quickbooks findInvoices).";
+const toolDescription =
+  "Search invoices in QuickBooks Online using criteria (maps to node-quickbooks findInvoices). Call with {} (or criteria: []) to list all invoices.";
 
 // ALLOWED FIELD LISTS (derived from Quickbooks Invoice entity docs – Filterable and Sortable columns)
 const ALLOWED_FILTER_FIELDS = [
@@ -100,7 +102,8 @@ const RUNTIME_CRITERIA_SCHEMA = z.union([
 const toolSchema = z.object({ criteria: z.any() });
 
 const toolHandler = async ({ params }: any) => {
-  const { criteria } = params;
+  // An empty call ({}) defaults to `[]` so the tool lists all invoices safely.
+  const criteria = resolveSearchCriteria(params?.criteria);
 
   // Validate runtime schema
   const parsed = RUNTIME_CRITERIA_SCHEMA.safeParse(criteria);
@@ -112,7 +115,7 @@ const toolHandler = async ({ params }: any) => {
     };
   }
 
-  const response = await searchQuickbooksInvoices(criteria);
+  const response = await searchQuickbooksInvoices(criteria as any);
 
   if (response.isError) {
     return {

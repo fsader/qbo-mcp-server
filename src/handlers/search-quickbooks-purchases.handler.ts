@@ -11,7 +11,11 @@ export async function searchQuickbooksPurchases(params: any): Promise<ToolRespon
     await quickbooksClient.authenticate();
     const quickbooks = quickbooksClient.getQuickbooks();
 
-    const criteria = buildQuickbooksSearchCriteria(params);
+    // The QBO list query for Purchase does not support a COUNT projection here:
+    // passing `count: true` makes node-quickbooks emit `SELECT COUNT(*)` which the
+    // API rejects with HTTP 400. Strip it so the tool degrades to a normal list.
+    const { count: _ignoredCount, ...searchParams } = (params ?? {}) as Record<string, any>;
+    const criteria = buildQuickbooksSearchCriteria(searchParams);
 
     return new Promise((resolve) => {
       quickbooks.findPurchases(criteria, (err: any, purchases: any) => {

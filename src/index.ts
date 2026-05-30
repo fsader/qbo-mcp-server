@@ -6,6 +6,10 @@ import { QuickbooksMCPServer } from "./server/qbo-mcp-server.js";
 // import { CreateCustomerTool } from "./tools/create-customer.tool.js";
 import { CreateInvoiceTool } from "./tools/create-invoice.tool.js";
 import { RegisterTool } from "./helpers/register-tool.js";
+import {
+  loadToolModeConfig,
+  isToolAllowed,
+} from "./helpers/tool-mode.js";
 import { ReadInvoiceTool } from "./tools/read-invoice.tool.js";
 import { SearchInvoicesTool } from "./tools/search-invoices.tool.js";
 import { UpdateInvoiceTool } from "./tools/update-invoice.tool.js";
@@ -203,226 +207,266 @@ import { GetVendorBalanceTool } from "./tools/get-vendor-balance.tool.js";
 const main = async () => {
   // Create an MCP server
   const server = QuickbooksMCPServer.GetServer();
+
+  // Safe tool gating: only register tools permitted by the current QBO_TOOL_MODE
+  // (default: read). Delete tools require QBO_TOOL_MODE=all AND
+  // QBO_ENABLE_DELETE_TOOLS=true. See src/helpers/tool-mode.ts.
+  const toolConfig = loadToolModeConfig();
+  const registeredTools: string[] = [];
+  const skippedTools: string[] = [];
+
+  const register = <T extends { name: string }>(tool: T) => {
+    if (isToolAllowed(tool.name, toolConfig)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      RegisterTool(server, tool as any);
+      registeredTools.push(tool.name);
+    } else {
+      skippedTools.push(tool.name);
+    }
+  };
+
   // Add tools for customers
-  RegisterTool(server, CreateCustomerTool);
-  RegisterTool(server, GetCustomerTool);
-  RegisterTool(server, UpdateCustomerTool);
-  RegisterTool(server, DeleteCustomerTool);
-  RegisterTool(server, SearchCustomersTool);
+  register(CreateCustomerTool);
+  register(GetCustomerTool);
+  register(UpdateCustomerTool);
+  register(DeleteCustomerTool);
+  register(SearchCustomersTool);
   // Add tools for estimates
-  RegisterTool(server, CreateEstimateTool);
-  RegisterTool(server, GetEstimateTool);
-  RegisterTool(server, UpdateEstimateTool);
-  RegisterTool(server, DeleteEstimateTool);
-  RegisterTool(server, SearchEstimatesTool);
+  register(CreateEstimateTool);
+  register(GetEstimateTool);
+  register(UpdateEstimateTool);
+  register(DeleteEstimateTool);
+  register(SearchEstimatesTool);
   
   // Add tools for bills
-  RegisterTool(server, CreateBillTool);
-  RegisterTool(server, UpdateBillTool);
-  RegisterTool(server, DeleteBillTool);
-  RegisterTool(server, GetBillTool);
-  RegisterTool(server, SearchBillsTool);
+  register(CreateBillTool);
+  register(UpdateBillTool);
+  register(DeleteBillTool);
+  register(GetBillTool);
+  register(SearchBillsTool);
 
 
   // Add tool to read a single invoice
-  RegisterTool(server, ReadInvoiceTool);
+  register(ReadInvoiceTool);
 
   // Add tool to search invoices
-  RegisterTool(server, SearchInvoicesTool);
+  register(SearchInvoicesTool);
 
   // Add tool to create invoice
-  RegisterTool(server, CreateInvoiceTool);
+  register(CreateInvoiceTool);
 
   // Add tool to update invoice
-  RegisterTool(server, UpdateInvoiceTool);
-  RegisterTool(server, DeleteInvoiceTool);
+  register(UpdateInvoiceTool);
+  register(DeleteInvoiceTool);
 
   // Chart of accounts tools
-  RegisterTool(server, CreateAccountTool);
-  RegisterTool(server, GetAccountTool);
-  RegisterTool(server, UpdateAccountTool);
-  RegisterTool(server, SearchAccountsTool);
+  register(CreateAccountTool);
+  register(GetAccountTool);
+  register(UpdateAccountTool);
+  register(SearchAccountsTool);
 
   // Add tool to read item
-  RegisterTool(server, ReadItemTool);
-  RegisterTool(server, SearchItemsTool);
-  RegisterTool(server, CreateItemTool);
-  RegisterTool(server, UpdateItemTool);
-  RegisterTool(server, DeleteItemTool);
+  register(ReadItemTool);
+  register(SearchItemsTool);
+  register(CreateItemTool);
+  register(UpdateItemTool);
+  register(DeleteItemTool);
 
   // // Add a tool to create a customer
-  // RegisterTool(server, CreateCustomerTool);
+  // register(CreateCustomerTool);
 
   // // Add tool to list accounts
-  // RegisterTool(server, ListAccountsTool);
+  // register(ListAccountsTool);
 
   // // Add tool to update a customer
-  // RegisterTool(server, UpdateCustomerTool);
+  // register(UpdateCustomerTool);
 
   // Add tools for vendors
-  RegisterTool(server, CreateVendorTool);
-  RegisterTool(server, UpdateVendorTool);
-  RegisterTool(server, DeleteVendorTool);
-  RegisterTool(server, GetVendorTool);
-  RegisterTool(server, SearchVendorsTool);
+  register(CreateVendorTool);
+  register(UpdateVendorTool);
+  register(DeleteVendorTool);
+  register(GetVendorTool);
+  register(SearchVendorsTool);
 
   // Add tools for employees
-  RegisterTool(server, CreateEmployeeTool);
-  RegisterTool(server, GetEmployeeTool);
-  RegisterTool(server, UpdateEmployeeTool);
-  RegisterTool(server, DeleteEmployeeTool);
-  RegisterTool(server, SearchEmployeesTool);
+  register(CreateEmployeeTool);
+  register(GetEmployeeTool);
+  register(UpdateEmployeeTool);
+  register(DeleteEmployeeTool);
+  register(SearchEmployeesTool);
 
   // Add tools for journal entries
-  RegisterTool(server, CreateJournalEntryTool);
-  RegisterTool(server, GetJournalEntryTool);
-  RegisterTool(server, UpdateJournalEntryTool);
-  RegisterTool(server, DeleteJournalEntryTool);
-  RegisterTool(server, SearchJournalEntriesTool);
+  register(CreateJournalEntryTool);
+  register(GetJournalEntryTool);
+  register(UpdateJournalEntryTool);
+  register(DeleteJournalEntryTool);
+  register(SearchJournalEntriesTool);
 
   // Add tools for bill payments
-  RegisterTool(server, CreateBillPaymentTool);
-  RegisterTool(server, GetBillPaymentTool);
-  RegisterTool(server, UpdateBillPaymentTool);
-  RegisterTool(server, DeleteBillPaymentTool);
-  RegisterTool(server, SearchBillPaymentsTool);
+  register(CreateBillPaymentTool);
+  register(GetBillPaymentTool);
+  register(UpdateBillPaymentTool);
+  register(DeleteBillPaymentTool);
+  register(SearchBillPaymentsTool);
 
   // Add tools for purchases
-  RegisterTool(server, CreatePurchaseTool);
-  RegisterTool(server, GetPurchaseTool);
-  RegisterTool(server, UpdatePurchaseTool);
-  RegisterTool(server, DeletePurchaseTool);
-  RegisterTool(server, SearchPurchasesTool);
+  register(CreatePurchaseTool);
+  register(GetPurchaseTool);
+  register(UpdatePurchaseTool);
+  register(DeletePurchaseTool);
+  register(SearchPurchasesTool);
 
   // Add tools for payments
-  RegisterTool(server, CreatePaymentTool);
-  RegisterTool(server, GetPaymentTool);
-  RegisterTool(server, UpdatePaymentTool);
-  RegisterTool(server, DeletePaymentTool);
-  RegisterTool(server, SearchPaymentsTool);
+  register(CreatePaymentTool);
+  register(GetPaymentTool);
+  register(UpdatePaymentTool);
+  register(DeletePaymentTool);
+  register(SearchPaymentsTool);
 
   // Add tools for sales receipts
-  RegisterTool(server, CreateSalesReceiptTool);
-  RegisterTool(server, GetSalesReceiptTool);
-  RegisterTool(server, UpdateSalesReceiptTool);
-  RegisterTool(server, DeleteSalesReceiptTool);
-  RegisterTool(server, SearchSalesReceiptsTool);
+  register(CreateSalesReceiptTool);
+  register(GetSalesReceiptTool);
+  register(UpdateSalesReceiptTool);
+  register(DeleteSalesReceiptTool);
+  register(SearchSalesReceiptsTool);
 
   // Add tools for credit memos
-  RegisterTool(server, CreateCreditMemoTool);
-  RegisterTool(server, GetCreditMemoTool);
-  RegisterTool(server, UpdateCreditMemoTool);
-  RegisterTool(server, DeleteCreditMemoTool);
-  RegisterTool(server, SearchCreditMemosTool);
+  register(CreateCreditMemoTool);
+  register(GetCreditMemoTool);
+  register(UpdateCreditMemoTool);
+  register(DeleteCreditMemoTool);
+  register(SearchCreditMemosTool);
 
   // Add tools for refund receipts
-  RegisterTool(server, CreateRefundReceiptTool);
-  RegisterTool(server, GetRefundReceiptTool);
-  RegisterTool(server, UpdateRefundReceiptTool);
-  RegisterTool(server, DeleteRefundReceiptTool);
-  RegisterTool(server, SearchRefundReceiptsTool);
+  register(CreateRefundReceiptTool);
+  register(GetRefundReceiptTool);
+  register(UpdateRefundReceiptTool);
+  register(DeleteRefundReceiptTool);
+  register(SearchRefundReceiptsTool);
 
   // Add tools for purchase orders
-  RegisterTool(server, CreatePurchaseOrderTool);
-  RegisterTool(server, GetPurchaseOrderTool);
-  RegisterTool(server, UpdatePurchaseOrderTool);
-  RegisterTool(server, DeletePurchaseOrderTool);
-  RegisterTool(server, SearchPurchaseOrdersTool);
+  register(CreatePurchaseOrderTool);
+  register(GetPurchaseOrderTool);
+  register(UpdatePurchaseOrderTool);
+  register(DeletePurchaseOrderTool);
+  register(SearchPurchaseOrdersTool);
 
   // Add tools for vendor credits
-  RegisterTool(server, CreateVendorCreditTool);
-  RegisterTool(server, GetVendorCreditTool);
-  RegisterTool(server, UpdateVendorCreditTool);
-  RegisterTool(server, DeleteVendorCreditTool);
-  RegisterTool(server, SearchVendorCreditsTool);
+  register(CreateVendorCreditTool);
+  register(GetVendorCreditTool);
+  register(UpdateVendorCreditTool);
+  register(DeleteVendorCreditTool);
+  register(SearchVendorCreditsTool);
 
   // Add tools for deposits
-  RegisterTool(server, CreateDepositTool);
-  RegisterTool(server, GetDepositTool);
-  RegisterTool(server, UpdateDepositTool);
-  RegisterTool(server, DeleteDepositTool);
-  RegisterTool(server, SearchDepositsTool);
+  register(CreateDepositTool);
+  register(GetDepositTool);
+  register(UpdateDepositTool);
+  register(DeleteDepositTool);
+  register(SearchDepositsTool);
 
   // Add tools for transfers
-  RegisterTool(server, CreateTransferTool);
-  RegisterTool(server, GetTransferTool);
-  RegisterTool(server, UpdateTransferTool);
-  RegisterTool(server, DeleteTransferTool);
-  RegisterTool(server, SearchTransfersTool);
+  register(CreateTransferTool);
+  register(GetTransferTool);
+  register(UpdateTransferTool);
+  register(DeleteTransferTool);
+  register(SearchTransfersTool);
 
   // Add tools for time activities
-  RegisterTool(server, CreateTimeActivityTool);
-  RegisterTool(server, GetTimeActivityTool);
-  RegisterTool(server, UpdateTimeActivityTool);
-  RegisterTool(server, DeleteTimeActivityTool);
-  RegisterTool(server, SearchTimeActivitiesTool);
+  register(CreateTimeActivityTool);
+  register(GetTimeActivityTool);
+  register(UpdateTimeActivityTool);
+  register(DeleteTimeActivityTool);
+  register(SearchTimeActivitiesTool);
 
   // Add tools for classes
-  RegisterTool(server, CreateClassTool);
-  RegisterTool(server, GetClassTool);
-  RegisterTool(server, UpdateClassTool);
-  RegisterTool(server, SearchClassesTool);
+  register(CreateClassTool);
+  register(GetClassTool);
+  register(UpdateClassTool);
+  register(SearchClassesTool);
 
   // Add tools for departments
-  RegisterTool(server, CreateDepartmentTool);
-  RegisterTool(server, GetDepartmentTool);
-  RegisterTool(server, UpdateDepartmentTool);
-  RegisterTool(server, SearchDepartmentsTool);
+  register(CreateDepartmentTool);
+  register(GetDepartmentTool);
+  register(UpdateDepartmentTool);
+  register(SearchDepartmentsTool);
 
   // Add tools for terms
-  RegisterTool(server, CreateTermTool);
-  RegisterTool(server, GetTermTool);
-  RegisterTool(server, UpdateTermTool);
-  RegisterTool(server, SearchTermsTool);
+  register(CreateTermTool);
+  register(GetTermTool);
+  register(UpdateTermTool);
+  register(SearchTermsTool);
 
   // Add tools for payment methods
-  RegisterTool(server, CreatePaymentMethodTool);
-  RegisterTool(server, GetPaymentMethodTool);
-  RegisterTool(server, UpdatePaymentMethodTool);
-  RegisterTool(server, SearchPaymentMethodsTool);
+  register(CreatePaymentMethodTool);
+  register(GetPaymentMethodTool);
+  register(UpdatePaymentMethodTool);
+  register(SearchPaymentMethodsTool);
 
   // Add tools for budgets (read-only)
-  RegisterTool(server, SearchBudgetsTool);
+  register(SearchBudgetsTool);
 
   // Add tools for tax codes
-  RegisterTool(server, GetTaxCodeTool);
-  RegisterTool(server, SearchTaxCodesTool);
+  register(GetTaxCodeTool);
+  register(SearchTaxCodesTool);
 
   // Add tools for tax rates
-  RegisterTool(server, GetTaxRateTool);
-  RegisterTool(server, SearchTaxRatesTool);
+  register(GetTaxRateTool);
+  register(SearchTaxRatesTool);
 
   // Add tools for tax agencies
-  RegisterTool(server, GetTaxAgencyTool);
-  RegisterTool(server, SearchTaxAgenciesTool);
+  register(GetTaxAgencyTool);
+  register(SearchTaxAgenciesTool);
 
   // Add tools for company info
-  RegisterTool(server, GetCompanyInfoTool);
-  RegisterTool(server, UpdateCompanyInfoTool);
+  register(GetCompanyInfoTool);
+  register(UpdateCompanyInfoTool);
 
   // Add tools for attachables
-  RegisterTool(server, CreateAttachableTool);
-  RegisterTool(server, GetAttachableTool);
-  RegisterTool(server, UpdateAttachableTool);
-  RegisterTool(server, DeleteAttachableTool);
-  RegisterTool(server, SearchAttachablesTool);
+  register(CreateAttachableTool);
+  register(GetAttachableTool);
+  register(UpdateAttachableTool);
+  register(DeleteAttachableTool);
+  register(SearchAttachablesTool);
 
   // Add financial report tools
-  RegisterTool(server, GetBalanceSheetTool);
-  RegisterTool(server, GetProfitAndLossTool);
-  RegisterTool(server, GetCashFlowTool);
-  RegisterTool(server, GetTrialBalanceTool);
-  RegisterTool(server, GetGeneralLedgerTool);
+  register(GetBalanceSheetTool);
+  register(GetProfitAndLossTool);
+  register(GetCashFlowTool);
+  register(GetTrialBalanceTool);
+  register(GetGeneralLedgerTool);
 
   // Add sales/AR report tools
-  RegisterTool(server, GetCustomerSalesTool);
-  RegisterTool(server, GetAgedReceivablesTool);
-  RegisterTool(server, GetCustomerBalanceTool);
+  register(GetCustomerSalesTool);
+  register(GetAgedReceivablesTool);
+  register(GetCustomerBalanceTool);
 
   // Add expense/AP report tools
-  RegisterTool(server, GetAgedPayablesTool);
-  RegisterTool(server, GetVendorExpensesTool);
-  RegisterTool(server, GetVendorBalanceTool);
+  register(GetAgedPayablesTool);
+  register(GetVendorExpensesTool);
+  register(GetVendorBalanceTool);
+
+  // Startup summary (stderr only — stdout is reserved for the MCP transport).
+  console.error(
+    `[qbo-mcp] QBO_TOOL_MODE=${toolConfig.mode} | ` +
+      `delete tools enabled: ${toolConfig.enableDeleteTools} | ` +
+      `registered: ${registeredTools.length} | skipped: ${skippedTools.length}`
+  );
+  if (toolConfig.allowedTools.size > 0) {
+    console.error(
+      `[qbo-mcp] QBO_ALLOWED_TOOLS active (${toolConfig.allowedTools.size} names) — ` +
+        `intersected with mode rules.`
+    );
+  }
+  // Debug/dev inspection of the full registered/skipped tool lists.
+  if (["1", "true", "yes"].includes((process.env.QBO_DEBUG_TOOLS ?? "").toLowerCase())) {
+    console.error(
+      `[qbo-mcp] registered tools (${registeredTools.length}): ${[...registeredTools].sort().join(", ")}`
+    );
+    console.error(
+      `[qbo-mcp] skipped tools (${skippedTools.length}): ${[...skippedTools].sort().join(", ")}`
+    );
+  }
 
   // Start receiving messages on stdin and sending messages on stdout
   const transport = new StdioServerTransport();

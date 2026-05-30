@@ -1,9 +1,11 @@
 import { searchQuickbooksItems } from "../handlers/search-quickbooks-items.handler.js";
+import { resolveSearchCriteria } from "../helpers/resolve-search-criteria.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
 const toolName = "search_items";
-const toolDescription = "Search items in QuickBooks Online using criteria (maps to node-quickbooks findItems).";
+const toolDescription =
+  "Search items in QuickBooks Online using criteria (maps to node-quickbooks findItems). Call with {} (or criteria: []) to list all items.";
 
 // Allowed field lists derived from QuickBooks Online Item entity documentation (Filterable/Sortable columns)
 const ALLOWED_FILTER_FIELDS = [
@@ -90,7 +92,8 @@ const RUNTIME_CRITERIA_SCHEMA = z.union([
 const toolSchema = z.object({ criteria: z.any() });
 
 const toolHandler = async ({ params }: any) => {
-  const { criteria } = params;
+  // An empty call ({}) defaults to `[]` so the tool lists all items safely.
+  const criteria = resolveSearchCriteria(params?.criteria);
 
   // Validate against runtime schema
   const parsed = RUNTIME_CRITERIA_SCHEMA.safeParse(criteria);
@@ -102,7 +105,7 @@ const toolHandler = async ({ params }: any) => {
     };
   }
 
-  const response = await searchQuickbooksItems(criteria);
+  const response = await searchQuickbooksItems(criteria as any);
 
   if (response.isError) {
     return { content: [{ type: "text" as const, text: `Error searching items: ${response.error}` }] };

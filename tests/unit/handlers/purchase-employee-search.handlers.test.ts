@@ -58,6 +58,35 @@ describe('search_purchases – Fixes #14', () => {
     expect(result.isError).toBe(true);
     expect(result.error).toContain('Auth failed');
   });
+
+  it('should strip the unsupported count flag before querying (QBO 400 guard)', async () => {
+    let captured: any;
+    (mockQuickBooksInstance.findPurchases as jest.Mock).mockImplementation(
+      (criteria: any, cb: any) => {
+        captured = criteria;
+        cb(null, { QueryResponse: { Purchase: [] } });
+      }
+    );
+
+    const result = await searchQuickbooksPurchases({ count: true, limit: 5 });
+
+    expect(result.isError).toBe(false);
+    // count must never reach node-quickbooks for this endpoint
+    const flat = JSON.stringify(captured);
+    expect(flat).not.toContain('count');
+    expect(flat).toContain('limit');
+  });
+
+  it('should tolerate being called with no params at all', async () => {
+    (mockQuickBooksInstance.findPurchases as jest.Mock).mockImplementation(
+      (_criteria: any, cb: any) => cb(null, { QueryResponse: { Purchase: [] } })
+    );
+
+    const result = await searchQuickbooksPurchases(undefined);
+
+    expect(result.isError).toBe(false);
+    expect(result.result).toEqual([]);
+  });
 });
 
 describe('search_employees – Fixes #15', () => {

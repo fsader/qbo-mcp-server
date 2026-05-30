@@ -7,3 +7,9 @@ coverage
 .env
 .env.local
 .env.*.local
+
+# Machine-specific MCP client config (absolute local paths). Commit .mcp.example.json instead.
+.mcp.json
+
+# Local Claude Code workspace state (memory, settings, session data)
+.claude/

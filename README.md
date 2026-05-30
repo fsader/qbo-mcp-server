@@ -58,37 +58,137 @@ Copy the template `.env.example` to `.env` in the root directory and fill in you
 cp .env.example .env
 ```
 
+This internal fork targets **production** by default and ships **read-only** via
+`QBO_TOOL_MODE=read`:
+
 ```env
-QUICKBOOKS_CLIENT_ID=your_client_id
-QUICKBOOKS_CLIENT_SECRET=your_client_secret
-QUICKBOOKS_ENVIRONMENT=sandbox
-QUICKBOOKS_REFRESH_TOKEN=your_refresh_token
-QUICKBOOKS_REALM_ID=your_realm_id
+# WARNING: This internal fork is configured for PRODUCTION by default.
+# Do not use against a real company unless QBO_TOOL_MODE=read is active.
+QUICKBOOKS_CLIENT_ID=your_production_client_id
+QUICKBOOKS_CLIENT_SECRET=your_production_client_secret
+QUICKBOOKS_REDIRECT_URI=http://localhost:8000/callback
+QUICKBOOKS_ENVIRONMENT=production
+# Filled automatically by npm run auth
+QUICKBOOKS_REFRESH_TOKEN=
+QUICKBOOKS_REALM_ID=
+# Safety controls
+QBO_TOOL_MODE=read
+QBO_ENABLE_DELETE_TOOLS=false
+QBO_ALLOWED_TOOLS=
 ```
 
-`.env` is gitignored so your real credentials stay local.
+`.env` is gitignored so your real credentials stay local. **Do not put secrets in
+your MCP client config** — leave them in `.env`.
 
-### Claude Code Integration
+### Claude Code Integration (project `.mcp.json`)
 
-Add to your Claude Code MCP configuration:
+The server communicates over **stdio** and reads credentials from `.env`
+(resolved next to the built server), so the client config stays secret-free:
 
 ```json
 {
   "mcpServers": {
-    "quickbooks": {
+    "qbo": {
       "command": "node",
-      "args": ["path/to/mcp-quickbooks-online/dist/index.js"],
-      "env": {
-        "QUICKBOOKS_CLIENT_ID": "your_client_id",
-        "QUICKBOOKS_CLIENT_SECRET": "your_client_secret",
-        "QUICKBOOKS_REFRESH_TOKEN": "your_refresh_token",
-        "QUICKBOOKS_REALM_ID": "your_realm_id",
-        "QUICKBOOKS_ENVIRONMENT": "sandbox"
-      }
+      "args": ["/absolute/path/to/qbo-mcp-server/dist/index.js"]
     }
   }
 }
 ```
+
+### VS Code Integration (`.vscode/mcp.json`)
+
+```json
+{
+  "servers": {
+    "qbo": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/absolute/path/to/qbo-mcp-server/dist/index.js"]
+    }
+  }
+}
+```
+
+Rebuild (`npm run build`) after any code change before the client relaunches the
+server.
+
+---
+
+## Tool gating / Safety
+
+This fork is for internal/personal use against a **production** QuickBooks Online
+company. Because the underlying API can create, update, and delete real data,
+tool registration is gated by environment variables so the safe default exposes
+**read-only** tools only.
+
+| `QBO_TOOL_MODE` | Registers                                                                      |
+| --------------- | ----------------------------------------------------------------------------- |
+| `read` (default) | read/report tools only (`get_*`, `read_*`, `search_*`, and `-` variants)      |
+| `read_write`    | read/report **plus** create/update tools; **never** delete tools               |
+| `all`           | read/write tools, **plus** delete tools only if `QBO_ENABLE_DELETE_TOOLS=true` |
+
+- `QBO_ENABLE_DELETE_TOOLS` (default `false`) — delete tools require **both**
+  `QBO_TOOL_MODE=all` **and** `QBO_ENABLE_DELETE_TOOLS=true`. Nothing else admits a delete tool.
+- `QBO_ALLOWED_TOOLS` — optional comma-separated allowlist. When set it
+  *intersects* with the mode rules (further restricting classified tools) and is
+  the only way to admit an unclassified tool (and never in `read` mode).
+- Unclassified tool names (no recognised prefix) are blocked by default.
+
+On startup the server prints a one-line summary to **stderr**, e.g.:
+
+```
+[qbo-mcp] QBO_TOOL_MODE=read | delete tools enabled: false | registered: 69 | skipped: 71
+```
+
+Set `QBO_DEBUG_TOOLS=true` to also print the full registered/skipped tool lists.
+Gating logic lives in [`src/helpers/tool-mode.ts`](src/helpers/tool-mode.ts),
+with tests in [`tests/unit/helpers/tool-mode.test.ts`](tests/unit/helpers/tool-mode.test.ts).
+
+**Hard guarantees:** in `read` mode no create/update/delete tool is visible; in
+`read_write` mode no delete tool is visible; delete tools require
+`QBO_TOOL_MODE=all` **and** `QBO_ENABLE_DELETE_TOOLS=true`. Start in `read`,
+verify access, then consider enabling writes.
+
+---
+
+## Known live verification results
+
+A read-only endpoint sweep was run against the **production "Awtar Lebanon"**
+QuickBooks Online company (`QBO_TOOL_MODE=read`). Results:
+
+- All **19** read/search/report endpoints tested worked.
+- **No regional blocks** — despite the company being based in Lebanon, every
+  endpoint returned data normally.
+- **No permission blocks** — no `401`/`403`/scope errors on any tool, reports included.
+- No create/update/delete/send/void/post tool was invoked.
+
+**Empty datasets that are normal for this company** (the endpoints work — there is
+simply no data): `search_bills`, `search_sales_receipts`, `search_credit_memos`,
+`search_deposits`, `search_transfers`, and `get_aged_payables`. (This company
+records expenses via purchases/journal entries and carries no A/P.)
+
+**Tool ergonomics hardened after verification:**
+
+- `search_accounts`, `search_items`, `search_invoices` now accept an empty call
+  (`{}`) and default internally to `criteria: []` (list all) — no more
+  "Invalid criteria" on an empty request.
+- `search_purchases` and `search_journal_entries` no longer expose a `count`
+  option (the QBO list query for these entities rejects a `COUNT` projection with
+  HTTP 400). The handlers also strip a stray `count` flag as a safety net.
+
+**Report date parameters (QBO quirks documented):**
+
+- **Balance Sheet** is a point-in-time statement. Pass **`as_of_date`** (maps to
+  QBO's `end_date`). `start_date` is ignored by QBO for this report and is never
+  forwarded.
+- **Trial Balance** honors an explicit period only when **both** `start_date` and
+  `end_date` are supplied. If only `end_date` is given, QBO defaults the period to
+  month-to-date.
+- **Profit & Loss** and **General Ledger** honor an explicit `start_date`/`end_date`
+  range.
+
+Keep `QBO_TOOL_MODE=read` until write workflows are separately designed and reviewed.
 
 ---
 

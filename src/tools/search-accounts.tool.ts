@@ -1,9 +1,11 @@
 import { searchQuickbooksAccounts } from "../handlers/search-quickbooks-accounts.handler.js";
+import { resolveSearchCriteria } from "../helpers/resolve-search-criteria.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
 const toolName = "search_accounts";
-const toolDescription = "Search chart‑of‑accounts entries using criteria.";
+const toolDescription =
+  "Search chart‑of‑accounts entries using criteria. Call with {} (or criteria: []) to list all accounts.";
 
 // Allowed field lists based on QuickBooks Online Account entity documentation. Only these can be
 // used in the search criteria.
@@ -170,7 +172,8 @@ const toolSchema = z.object({ criteria: criteriaSchema });
 
 // Tool handler with runtime validation & coercion
 const toolHandler = async ({ params }: any) => {
-  const { criteria } = params;
+  // An empty call ({}) defaults to `[]` so the tool lists all accounts safely.
+  const criteria = resolveSearchCriteria(params?.criteria);
   const parsed = RUNTIME_CRITERIA_SCHEMA.safeParse(criteria);
   if (!parsed.success) {
     return { content: [{ type: "text" as const, text: `Invalid criteria: ${parsed.error.message}` }] };

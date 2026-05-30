@@ -3,7 +3,11 @@ import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
 
 export interface BalanceSheetOptions {
+  /** Preferred point-in-time date. Maps to the QBO `end_date` "as of" param. */
+  as_of_date?: string;
+  /** @deprecated Ignored by the Balance Sheet report — it is a point-in-time statement. */
   start_date?: string;
+  /** "As of" date. Used when `as_of_date` is not supplied. */
   end_date?: string;
   accounting_method?: "Cash" | "Accrual";
   summarize_column_by?: "Total" | "Month" | "Week" | "Days";
@@ -13,11 +17,13 @@ export async function getQuickbooksBalanceSheet(options: BalanceSheetOptions): P
   try {
     await quickbooksClient.authenticate();
     const quickbooks = quickbooksClient.getQuickbooks();
-    // Balance Sheet is a point-in-time report — end_date is the "as of" date.
-    // start_date is not a valid QBO param for Balance Sheet and was causing
-    // end_date to be silently ignored in some configurations.
+    // Balance Sheet is a point-in-time report — the QBO "as of" date is the
+    // `end_date` query param. `start_date` is NOT a valid param here and was
+    // causing the date to be silently ignored in some configurations, so it is
+    // never forwarded. `as_of_date` is the clearer alias and takes precedence.
+    const asOf = options.as_of_date ?? options.end_date;
     const params: Record<string, any> = {};
-    if (options.end_date) params.end_date = options.end_date;
+    if (asOf) params.end_date = asOf;
     if (options.accounting_method) params.accounting_method = options.accounting_method;
     if (options.summarize_column_by) params.summarize_column_by = options.summarize_column_by;
 

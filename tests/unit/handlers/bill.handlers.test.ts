@@ -53,6 +53,31 @@ describe('Bill Handlers', () => {
       expect(result.isError).toBe(true);
       expect(result.error).toContain('Error: Auth failed');
     });
+
+    it('passes through already-structured and plain line items unchanged', async () => {
+      let captured: any;
+      mockQuickBooksInstance.createBill.mockImplementation((payload: any, cb: any) => {
+        captured = payload;
+        cb(null, { Id: '2' });
+      });
+
+      const result = await createQuickbooksBill({
+        Line: [
+          // already nested -> returned as-is (handler line 19)
+          { Amount: 100, AccountBasedExpenseLineDetail: { AccountRef: { value: '7' } } },
+          // no AccountRef and no detail -> returned as-is (handler line 28)
+          { Amount: 50, Description: 'No account ref' },
+        ],
+        VendorRef: { value: '56' },
+      });
+
+      expect(result.isError).toBe(false);
+      expect(captured.Line[0]).toEqual({
+        Amount: 100,
+        AccountBasedExpenseLineDetail: { AccountRef: { value: '7' } },
+      });
+      expect(captured.Line[1]).toEqual({ Amount: 50, Description: 'No account ref' });
+    });
   });
 
   describe('getQuickbooksBill', () => {
