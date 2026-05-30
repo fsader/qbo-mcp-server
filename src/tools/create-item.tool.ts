@@ -12,6 +12,15 @@ const toolSchema = z.object({
   expense_account_ref: z.string().optional(),
   unit_price: z.number().optional(),
   description: z.string().optional(),
+  sku: z.string().optional(),
+  asset_account_ref: z.string().optional(),
+  purchase_cost: z.number().optional(),
+  track_qty_on_hand: z.boolean().optional(),
+  qty_on_hand: z.number().optional(),
+  inv_start_date: z.string().optional(),
+  sales_tax_code_ref: z.string().optional(),
+  purchase_tax_code_ref: z.string().optional(),
+  taxable: z.boolean().optional(),
 });
 
 const toolHandler = async ({ params }: any) => {
