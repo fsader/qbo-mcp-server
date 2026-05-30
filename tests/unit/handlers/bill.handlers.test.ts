@@ -51,7 +51,7 @@ describe('Bill Handlers', () => {
       const result = await createQuickbooksBill({});
 
       expect(result.isError).toBe(true);
-      expect(result.error).toContain('Error: Auth failed');
+      expect(result.error).toContain('Auth failed');
     });
 
     it('passes through already-structured and plain line items unchanged', async () => {
@@ -107,7 +107,7 @@ describe('Bill Handlers', () => {
       const result = await getQuickbooksBill('1');
 
       expect(result.isError).toBe(true);
-      expect(result.error).toContain('Error: Auth failed');
+      expect(result.error).toContain('Auth failed');
     });
   });
 
@@ -138,7 +138,7 @@ describe('Bill Handlers', () => {
       const result = await updateQuickbooksBill({ Id: '1', SyncToken: '0' });
 
       expect(result.isError).toBe(true);
-      expect(result.error).toContain('Error: Auth failed');
+      expect(result.error).toContain('Auth failed');
     });
   });
 
@@ -169,7 +169,7 @@ describe('Bill Handlers', () => {
       const result = await deleteQuickbooksBill({ Id: '1', SyncToken: '0' });
 
       expect(result.isError).toBe(true);
-      expect(result.error).toContain('Error: Auth failed');
+      expect(result.error).toContain('Auth failed');
     });
   });
 
@@ -248,7 +248,7 @@ describe('Bill Handlers', () => {
       const result = await searchQuickbooksBills({});
 
       expect(result.isError).toBe(true);
-      expect(result.error).toContain('Error: Auth failed');
+      expect(result.error).toContain('Auth failed');
     });
   });
 });

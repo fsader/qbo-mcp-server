@@ -115,6 +115,82 @@ server.
 
 ---
 
+## Remote deployment (Railway)
+
+The server has **two entrypoints that share the same tools and gating**:
+
+| Entrypoint        | Command               | Transport         | Use                                   |
+| ----------------- | --------------------- | ----------------- | ------------------------------------- |
+| `dist/index.js`   | `npm start`           | stdio             | Local Claude Code / VS Code (default) |
+| `dist/http.js`    | `npm run start:http`  | Streamable HTTP   | Remote host (Railway)                 |
+
+The HTTP entrypoint exposes:
+
+- `GET /health` — public; returns only `{ "status": "ok", "mode": "<QBO_TOOL_MODE>" }`. No secrets, tokens, realm id, or QBO data.
+- `POST /mcp` (+ `GET`/`DELETE` for session management) — the MCP endpoint. **Requires** `Authorization: Bearer <MCP_SERVER_TOKEN>`. Without a valid bearer it returns `401`. The server refuses to start if `MCP_SERVER_TOKEN` is unset.
+
+### Railway setup
+
+1. Create a Railway service from this repo. Build/run are defined by the
+   [`Dockerfile`](Dockerfile) and [`railway.toml`](railway.toml) (Node 20; build
+   `npm run build`; start `node dist/http.js`; healthcheck `GET /health`).
+2. Set service **Variables** (Railway injects `PORT` automatically — do not set it):
+
+   ```bash
+   QUICKBOOKS_CLIENT_ID=...
+   QUICKBOOKS_CLIENT_SECRET=...
+   QUICKBOOKS_REFRESH_TOKEN=...        # obtain locally via `npm run auth` first
+   QUICKBOOKS_REALM_ID=...
+   QUICKBOOKS_ENVIRONMENT=production
+   QBO_TOOL_MODE=read                  # start read-only
+   QBO_ENABLE_DELETE_TOOLS=false
+   MCP_SERVER_TOKEN=...                # long random secret (e.g. `openssl rand -hex 32`)
+   ```
+
+3. Deploy, then check health:
+
+   ```bash
+   curl https://<railway-domain>/health
+   # {"status":"ok","mode":"read"}
+   ```
+
+### Connect Claude Code to the remote server
+
+```bash
+claude mcp add --transport http awtar-qbo \
+  https://<railway-domain>/mcp \
+  --header "Authorization: Bearer <MCP_SERVER_TOKEN>"
+```
+
+Equivalent `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "awtar-qbo": {
+      "type": "http",
+      "url": "https://<railway-domain>/mcp",
+      "headers": { "Authorization": "Bearer <MCP_SERVER_TOKEN>" }
+    }
+  }
+}
+```
+
+Then verify in Claude Code with a read call such as `get_company_info`.
+
+### ⚠️ Refresh-token persistence is temporary
+
+Intuit rotates the QBO refresh token roughly every 24h. The current client
+persists a rotated token by writing back to a local `.env`
+([`saveTokensToEnv()`](src/clients/quickbooks-client.ts)). **On Railway that file
+is ephemeral** — it is lost on every redeploy and container restart. Until a
+durable token store is added (planned: Railway Volume / encrypted store), if the
+server loses access after a redeploy you may need to **re-run `npm run auth`
+locally and manually update `QUICKBOOKS_REFRESH_TOKEN` in the Railway
+Variables**. This is a known v2-fast limitation, not a bug.
+
+---
+
 ## Tool gating / Safety
 
 This fork is for internal/personal use against a **production** QuickBooks Online

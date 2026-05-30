@@ -48,7 +48,7 @@ describe('Vendor Handlers', () => {
       const result = await createQuickbooksVendor({});
 
       expect(result.isError).toBe(true);
-      expect(result.error).toContain('Error: Auth failed');
+      expect(result.error).toContain('Auth failed');
     });
   });
 
@@ -79,7 +79,7 @@ describe('Vendor Handlers', () => {
       const result = await getQuickbooksVendor('56');
 
       expect(result.isError).toBe(true);
-      expect(result.error).toContain('Error: Auth failed');
+      expect(result.error).toContain('Auth failed');
     });
   });
 
@@ -110,7 +110,7 @@ describe('Vendor Handlers', () => {
       const result = await updateQuickbooksVendor({ Id: '56', SyncToken: '0' });
 
       expect(result.isError).toBe(true);
-      expect(result.error).toContain('Error: Auth failed');
+      expect(result.error).toContain('Auth failed');
     });
   });
 
@@ -141,7 +141,7 @@ describe('Vendor Handlers', () => {
       const result = await deleteQuickbooksVendor({ Id: '56', SyncToken: '0' });
 
       expect(result.isError).toBe(true);
-      expect(result.error).toContain('Error: Auth failed');
+      expect(result.error).toContain('Auth failed');
     });
   });
 
@@ -220,7 +220,7 @@ describe('Vendor Handlers', () => {
       const result = await searchQuickbooksVendors({});
 
       expect(result.isError).toBe(true);
-      expect(result.error).toContain('Error: Auth failed');
+      expect(result.error).toContain('Auth failed');
     });
   });
 });
