@@ -13,3 +13,10 @@ coverage
 
 # Local Claude Code workspace state (memory, settings, session data)
 .claude/
+
+# Awtar/Wakilni business working files (real customer & financial data — NOT part of the MCP server)
+awtar/
+.soa-venv/
+
+# macOS
+.DS_Store
